@@ -1,0 +1,114 @@
+---
+title: "Checking Assumptions"
+author: ""
+date: ""
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message = F)
+library(tidyverse)
+```
+
+Recall the 6 assumptions, specified by ROS, for regression models
+
+1. Validity
+2. Representativeness
+3. Additivity and linearity
+4. Independence of errors
+5. Equal variance of errors
+6. Normality of errors
+
+Similar to HW 7, we will focus on assumptions 3, 4, 5, and 6.
+
+### Additivity and linearity
+
+
+#### Data Simulation 
+
+Consider data simulated from the model:
+
+$$y = \beta_0 + \beta_1 x + \beta_2 x^2 + \epsilon,$$
+where $\epsilon \sim N(0,\sigma^2)$
+
+
+```{r}
+set.seed(10102022)
+n <- 50
+x <- runif(n, 0, 10)
+sigma <- 3
+beta <- c(1,1,.75)
+
+y <- rnorm(n, beta[1] + beta[2] * x + beta[3] * x^2,  sigma)
+```
+
+#### Data Visualization 
+
+If we visualize the data as a function of x, the response is clearly non-linear.
+
+```{r}
+d1 <- tibble(x = x, y = y, x_sq = x^2)
+d1 %>% ggplot(aes(y=y, x=x)) + 
+  geom_smooth(formula = 'y~x', method ='loess') + 
+  geom_smooth(formula = 'y~x', method = 'lm', color = 'red') + 
+  geom_point() +
+  theme_bw() +
+  ggtitle('Non-linear synthetic data') +
+  labs(caption = "Red is best linear fit, blue is loess curve ")
+```
+
+#### Data Modeling and Assessment
+
+We'll start with fitting a regression model corresponding to:
+
+$$y = \beta_0 + \beta_1 x + \epsilon,$$
+where $\epsilon \sim N(0,\sigma^2)$
+
+```{r}
+lm1 <- lm(y~x, data = d1)
+summary(lm1)
+```
+
+The `ggResidpanel` has nice functionality for residual checks and model assessment.
+```{r}
+#library(devtools)
+#devtools::install_github("goodekat/ggResidpanel")
+library(ggResidpanel)
+resid_panel(lm1, plots = 'all', smoother = T, qqbands = T)
+# resid_interact(lm1, plots = c("resid", "qq")) # note won't compile in non HTML formats
+resid_xpanel(lm1)
+```
+
+#### Data Modeling and Assessment: Part 2
+
+Now we'll update our model, to the true model, such that:
+
+$$y = \beta_0 + \beta_1 x + \beta_2 x^2 +  \epsilon,$$
+where $\epsilon \sim N(0,\sigma^2)$
+
+
+```{r}
+lm2 <- lm(y~x + x_sq, data = d1)
+summary(lm2)
+```
+
+We see that the parameter coefficients are close to our true values.
+
+```{r}
+resid_panel(lm2, plots = 'all', smoother = T, qqbands = T)
+resid_xpanel(lm2)
+```
+
+Similarly, the residual plots are better behaved without a clear pattern.
+
+```{r, message = F}
+resid_compare(models = list(lm1, 
+                            lm2),
+              plots = c("resid"),
+              smoother = TRUE)
+```
+
+### Next Steps:
+
+Work through other scenario(s) where 1 or more of the other assumptions are violated
